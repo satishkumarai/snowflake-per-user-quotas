@@ -1,0 +1,36 @@
+sequenceDiagram
+    participant User as PUQ_DEMO_USER
+    participant SF as Snowflake Service
+    participant Block as Block Pipeline
+    participant Eval as Eval Task (TIER_1H)
+    participant Admin as PUQ_QUOTA_ADMIN_ROLE
+
+    Note over User, Admin: PUQ Normal Operation
+
+    User->>SF: AI_COMPLETE() request
+    SF->>User: Response
+    SF-->>Block: Usage event (minutes)
+
+    Note over User, Admin: PUQ Block Enforcement (AI Only)
+
+    Block->>Block: Compare PUQ_DEMO_USER spend vs PUQ_AI_STANDARD_QUOTA limit (100)
+    alt Spend >= 100 AI credits
+        Block->>User: Block + email notification
+        User->>SF: Next AI request
+        SF->>User: Error: Quota Exhausted (PUQ_AI_STANDARD_QUOTA)
+    end
+
+    Note over User, Admin: PUQ Evaluation Task (TIER_1H)
+
+    Eval->>Eval: Aggregate per-user usage
+    alt 80% Projected threshold
+        Eval->>User: Warning email (once per 24h)
+        Eval->>Admin: Admin summary
+    end
+
+    Note over User, Admin: PUQ Escalation
+
+    Admin->>SF: ALTER USER PUQ_DEMO_USER SET TAG USAGE_TIER = 'high'
+    Block->>Block: Clear standard-tier blocks (~15 min)
+    Block->>Block: Evaluate against PUQ_AI_HIGH_TIER_QUOTA (500)
+    User->>SF: AI request succeeds (under 500 limit)

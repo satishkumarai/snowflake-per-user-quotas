@@ -1,0 +1,33 @@
+stateDiagram-v2
+    [*] --> Created: CREATE SNOWFLAKE.CORE.QUOTA PUQ_AI_STANDARD_QUOTA()
+
+    Created --> Configured: ADD_SHARED_RESOURCE + SET_USER_TAGS + SET_PER_USER_LIMIT
+
+    Configured --> Active: Block enforcement enabled<br/>Evaluation task starts
+
+    Active --> ThresholdWarning: PUQ_DEMO_USER spend >= 50% projected
+    ThresholdWarning --> Active: Notification sent (once/24h)
+
+    Active --> NearLimit: PUQ_DEMO_USER spend >= 90% actual
+    NearLimit --> Active: Notification sent (once/cycle)
+
+    Active --> Blocked: PUQ_DEMO_USER spend >= limit<br/>Block pipeline evaluates within minutes
+
+    Blocked --> AutoUnblocked: Cycle reset (UTC midnight for daily, 1st for monthly)
+    Blocked --> Escalated: Admin changes tag to USAGE_TIER=high<br/>~15 min propagation
+
+    AutoUnblocked --> Active: New period, usage counters reset
+    Escalated --> HighTierActive: PUQ_AI_HIGH_TIER_QUOTA evaluates<br/>Higher limit (500 credits)
+
+    HighTierActive --> Active: Admin reverts tag to USAGE_TIER=standard
+
+    note right of Blocked
+        Block enforcement: within minutes
+        Only AI domains (not warehouses)
+        Auto-releases at cycle boundary
+    end note
+
+    note right of Escalated
+        No double-blocking between quotas
+        Pipeline clears old blocks automatically
+    end note

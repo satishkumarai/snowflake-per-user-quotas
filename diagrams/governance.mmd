@@ -1,0 +1,30 @@
+graph TD
+    subgraph "PUQ Governance Flow"
+        START[User AI/WH Request] --> METER[Metering Pipeline<br/>Usage Attribution]
+        METER --> QUOTA{Which PUQ Quota?}
+
+        QUOTA -->|AI Standard| Q1[PUQ_AI_STANDARD_QUOTA<br/>100 credits/mo]
+        QUOTA -->|AI High| Q2[PUQ_AI_HIGH_TIER_QUOTA<br/>500 credits/mo]
+        QUOTA -->|Warehouse| Q3[PUQ_WH_STANDARD_QUOTA<br/>50 credits/mo]
+
+        Q1 & Q2 --> BLOCK_CHECK{Spend >= Limit?}
+        Q3 --> EVAL_CHECK{Threshold Crossed?}
+
+        BLOCK_CHECK -->|Yes| BLOCK[AUTO-BLOCK<br/>AI Requests Denied<br/>Within Minutes]
+        BLOCK_CHECK -->|No| OK[Normal Operation]
+
+        EVAL_CHECK -->|100% ACTUAL| CUSTOM[Custom Action<br/>DISABLE_USERS_BY_ID]
+        EVAL_CHECK -->|50-80% PROJECTED| NOTIFY[Notifications<br/>User + Admin Email]
+
+        BLOCK -->|Cycle Reset| RESET_BLOCK[Auto-Unblock<br/>UTC Midnight/Month]
+        CUSTOM -->|Cycle Start| RESET_ACTION[REENABLE_QUOTA_USERS<br/>Monthly UTC]
+
+        BLOCK -->|Escalation| ESCALATE[Change Tag<br/>USAGE_TIER = high<br/>~15 min propagation]
+    end
+
+    subgraph "PUQ Observability"
+        NOTIFY --> EVENTS[Event Table]
+        BLOCK --> EVENTS
+        CUSTOM --> EVENTS
+        EVENTS --> DASHBOARD[FinOps Dashboard]
+    end

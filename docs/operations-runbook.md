@@ -1,0 +1,99 @@
+# Operations Runbook
+
+## Object Names Quick Reference
+
+| Object | Name |
+|--------|------|
+| Database | `PUQ_GOVERNANCE_DB` |
+| AI Standard Quota | `PUQ_AI_STANDARD_QUOTA` |
+| AI High Tier Quota | `PUQ_AI_HIGH_TIER_QUOTA` |
+| WH Standard Quota | `PUQ_WH_STANDARD_QUOTA` |
+| Test User | `PUQ_DEMO_USER` |
+| Admin Role | `PUQ_QUOTA_ADMIN_ROLE` |
+
+---
+
+## Check Quota Status
+
+```sql
+USE ROLE PUQ_QUOTA_ADMIN_ROLE;
+USE SCHEMA PUQ_GOVERNANCE_DB.QUOTAS;
+CALL PUQ_AI_STANDARD_QUOTA!GET_CONFIG();
+CALL PUQ_AI_HIGH_TIER_QUOTA!GET_CONFIG();
+CALL PUQ_WH_STANDARD_QUOTA!GET_CONFIG();
+```
+
+## View Current Spending
+
+```sql
+CALL PUQ_AI_STANDARD_QUOTA!GET_PER_USER_USAGE_PREVIEW(
+    TO_VARCHAR(DATE_TRUNC('MONTH', CURRENT_DATE()), 'YYYY-MM-DD'),
+    TO_VARCHAR(CURRENT_DATE(), 'YYYY-MM-DD')
+);
+```
+
+## Check Blocked Users
+
+```sql
+CALL PUQ_AI_STANDARD_QUOTA!GET_ACTIVE_BLOCKS();
+CALL PUQ_AI_HIGH_TIER_QUOTA!GET_ACTIVE_BLOCKS();
+```
+
+## Respond to "Quota Exhausted" Error
+
+Options:
+1. **Wait** for cycle reset (UTC midnight daily, 1st monthly)
+2. **Raise limit**: `CALL PUQ_AI_STANDARD_QUOTA!SET_PER_USER_LIMIT(200);` (~15 min propagation)
+3. **Escalate to high tier**:
+   ```sql
+   ALTER USER PUQ_DEMO_USER SET TAG PUQ_GOVERNANCE_DB.TAGS.USAGE_TIER = 'high';
+   ```
+
+## Emergency: Disable All Enforcement
+
+```sql
+USE ROLE PUQ_QUOTA_ADMIN_ROLE;
+USE SCHEMA PUQ_GOVERNANCE_DB.QUOTAS;
+CALL PUQ_AI_STANDARD_QUOTA!SET_BLOCK_ENFORCEMENT_ENABLED(FALSE);
+CALL PUQ_AI_HIGH_TIER_QUOTA!SET_BLOCK_ENFORCEMENT_ENABLED(FALSE);
+-- Users auto-unblocked within ~15 minutes
+```
+
+## Re-enable a Disabled User
+
+```sql
+USE ROLE ACCOUNTADMIN;
+ALTER USER PUQ_DEMO_USER SET DISABLED = FALSE;
+```
+
+## Remove Custom Actions
+
+```sql
+USE ROLE PUQ_QUOTA_ADMIN_ROLE;
+USE SCHEMA PUQ_GOVERNANCE_DB.QUOTAS;
+CALL PUQ_WH_STANDARD_QUOTA!REMOVE_CUSTOM_ACTIONS();
+CALL PUQ_WH_STANDARD_QUOTA!REMOVE_CYCLE_START_ACTION();
+```
+
+## Check Event Table for Errors
+
+```sql
+USE ROLE ACCOUNTADMIN;
+SELECT TIMESTAMP, RECORD:name::STRING AS event, VALUE:message::STRING AS msg
+FROM snowflake.telemetry.events
+WHERE SCOPE['name'] = 'snow.cost.quota'
+  AND RECORD:severity_text::STRING = 'ERROR'
+  AND TIMESTAMP > DATEADD('day', -1, CURRENT_TIMESTAMP())
+ORDER BY TIMESTAMP DESC;
+```
+
+## Enforcement History
+
+```sql
+USE ROLE PUQ_QUOTA_ADMIN_ROLE;
+USE SCHEMA PUQ_GOVERNANCE_DB.QUOTAS;
+CALL PUQ_AI_STANDARD_QUOTA!GET_ENFORCEMENT_HISTORY(
+    TO_VARCHAR(DATE_TRUNC('MONTH', CURRENT_DATE()), 'YYYY-MM-DD'),
+    TO_VARCHAR(CURRENT_DATE(), 'YYYY-MM-DD')
+);
+```

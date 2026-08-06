@@ -1,0 +1,38 @@
+graph TB
+    subgraph "PUQ Users"
+        U1[PUQ_DEMO_USER<br/>Standard Tier]
+        U2[Escalated User<br/>High Tier]
+    end
+    subgraph "PUQ Tags (PUQ_GOVERNANCE_DB.TAGS)"
+        T1[COST_CENTER=engineering]
+        T2[USAGE_TIER=standard/high]
+        T3[DEPARTMENT=data-science]
+    end
+    subgraph "PUQ Quotas (PUQ_GOVERNANCE_DB.QUOTAS)"
+        Q1[PUQ_AI_STANDARD_QUOTA<br/>100/mo, 10/day, Block ON]
+        Q2[PUQ_AI_HIGH_TIER_QUOTA<br/>500/mo, 50/day, Block ON]
+        Q3[PUQ_WH_STANDARD_QUOTA<br/>50/mo, 5/day, Custom Action]
+    end
+    subgraph "Domains"
+        D1[AI Functions]
+        D2[Cortex Agents]
+        D3[CoWork / CoCo]
+        D4[PUQ_TEST_WH]
+    end
+    subgraph "Enforcement"
+        E1[Block Pipeline<br/>Within Minutes<br/>AI Only]
+        E2[Eval Task<br/>TIER_1H / 6h<br/>All Domains]
+    end
+    subgraph "Observability"
+        O1[Event Table<br/>snowflake.telemetry.events]
+        O2[Snowsight UI<br/>Admin > Cost Management]
+        O3[Block History<br/>quota_access_block_history]
+    end
+    U1 --> T1 & T2 & T3
+    U2 --> T1 & T2 & T3
+    T1 & T2 --> Q1 & Q2 & Q3
+    Q1 & Q2 --> D1 & D2 & D3
+    Q3 --> D4
+    Q1 & Q2 --> E1
+    Q1 & Q2 & Q3 --> E2
+    E1 & E2 --> O1 & O2 & O3
