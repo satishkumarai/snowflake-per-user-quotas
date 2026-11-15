@@ -190,3 +190,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) for details.
+
+## Articles and architecture notes
+
+- [Part 2: From Tag-Based Governance to Role-Based Control](docs/per-user-quota-part-2.md)
